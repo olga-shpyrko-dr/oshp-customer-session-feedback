@@ -731,7 +731,7 @@ async function init() {
     const res = await fetch(url);
     const data = await res.json();
 
-    if (!data.open) {
+    if (data.open === false) {
       show('state-closed');
       return;
     }
