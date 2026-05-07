@@ -727,7 +727,7 @@ async function init() {
 
   /* Load existing response */
   try {
-    const url = `${CONFIG.appsScriptUrl}?token=${encodeURIComponent(TOKEN)}&session=${encodeURIComponent(SESSION)}`;
+    const url = `${CONFIG.appsScriptUrl}?token=${encodeURIComponent(TOKEN)}&session=${encodeURIComponent(SESSION || CONFIG.sessionName)}`;
     const res = await fetch(url);
     const data = await res.json();
 
