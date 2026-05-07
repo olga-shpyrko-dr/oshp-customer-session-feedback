@@ -649,7 +649,7 @@ function prefill(response) {
   if (response.role) document.getElementById('role').value = response.role;
 }
 
-async function submitForm() {
+function submitForm() {
   if (!selectedScore) {
     toast('Please select a value score (Q1) before submitting.');
     return;
@@ -671,29 +671,50 @@ async function submitForm() {
     submitted_at: new Date().toISOString()
   };
 
-  try {
-    const res = await fetch(CONFIG.appsScriptUrl, {
-      method: 'POST',
-      body: JSON.stringify(payload)
-    });
-    const data = await res.json();
-    if (data.ok) {
-      show('state-thanks');
-    } else if (data.error === 'form closed') {
-      show('state-closed');
-    } else {
-      throw new Error(data.error || 'unknown error');
+  const submitUrl = CONFIG.appsScriptUrl + '?action=submit&payload=' + encodeURIComponent(JSON.stringify(payload));
+  jsonp(
+    submitUrl,
+    function(data) {
+      btn.disabled = false;
+      btn.textContent = 'Submit feedback';
+      if (data.ok) {
+        show('state-thanks');
+      } else if (data.error === 'form closed') {
+        show('state-closed');
+      } else {
+        toast('Something went wrong. Please try again.');
+      }
+    },
+    function() {
+      btn.disabled = false;
+      btn.textContent = 'Submit feedback';
+      toast('Something went wrong. Please try again.');
     }
-  } catch (err) {
-    toast('Something went wrong. Please try again.');
-    console.error(err);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Submit feedback';
-  }
+  );
 }
 
-async function init() {
+function jsonp(url, onSuccess, onError) {
+  const cb = 'jsonp_' + Math.random().toString(36).slice(2);
+  const script = document.createElement('script');
+  const timeout = setTimeout(function() {
+    cleanup();
+    if (onError) onError();
+  }, 8000);
+  function cleanup() {
+    clearTimeout(timeout);
+    delete window[cb];
+    if (script.parentNode) script.parentNode.removeChild(script);
+  }
+  window[cb] = function(data) {
+    cleanup();
+    onSuccess(data);
+  };
+  script.src = url + '&callback=' + cb;
+  script.onerror = function() { cleanup(); if (onError) onError(); };
+  document.head.appendChild(script);
+}
+
+function init() {
   /* Set session info from URL params or config */
   const sName = params.get('session_name') || CONFIG.sessionName;
   const sDate = params.get('session_date') || CONFIG.sessionDateTime;
@@ -726,27 +747,19 @@ async function init() {
     return;
   }
 
-  /* Load existing response */
-  try {
-    const url = `${CONFIG.appsScriptUrl}?token=${encodeURIComponent(TOKEN)}&session=${encodeURIComponent(SESSION || CONFIG.sessionName)}`;
-    const res = await fetch(url);
-    const data = await res.json();
-
-    if (data.open === false) {
-      show('state-closed');
-      return;
-    }
-    if (data.error === 'token not found') {
-      show('state-invalid');
-      return;
-    }
-    prefill(data.response);
-    show('form-area');
-  } catch(e) {
-    /* Network error or Apps Script not yet configured — show form anyway for testing */
-    console.warn('Could not reach Apps Script:', e.message);
-    show('form-area');
-  }
+  /* Load existing response via JSONP (bypasses CORS) */
+  const sessionKey = SESSION || CONFIG.sessionName;
+  jsonp(
+    CONFIG.appsScriptUrl + '?token=' + encodeURIComponent(TOKEN) + '&session=' + encodeURIComponent(sessionKey),
+    function(data) {
+      if (data.open === false) { show('state-closed'); return; }
+      if (data.error === 'token not found' || data.error === 'invalid token') { show('state-invalid'); return; }
+      if (data.error) { console.warn('Apps Script warning:', data.error); }
+      prefill(data.response);
+      show('form-area');
+    },
+    function() { show('form-area'); }
+  );
 }
 
 init();
