@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session Feedback</title>
+<style>
+  /* ── CONFIG: set APPS_SCRIPT_URL before deploying ── */
+  /* See <script> block at bottom */
+
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=Fragment+Mono&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --green: #81FBA5;
+    --black: #0B0B0B;
+    --grey: #E4E4E4;
+    --indigo: #5C41FF;
+    --white: #FFFFFF;
+    --text: #0B0B0B;
+    --text-muted: #555555;
+    --border: #D0D0D0;
+    --radius: 6px;
+    --font: 'DM Sans', sans-serif;
+    --mono: 'Fragment Mono', monospace;
+  }
+
+  body {
+    font-family: var(--font);
+    background: #F5F5F3;
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0 0 60px;
+  }
+
+  /* Header bar */
+  .header {
+    background: var(--black);
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* DataRobot D symbol approximation */
+  .logo-symbol {
+    width: 28px;
+    height: 28px;
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .logo-wordmark {
+    font-family: var(--font);
+    font-weight: 500;
+    font-size: 16px;
+    color: var(--white);
+    letter-spacing: -0.2px;
+  }
+
+  .header-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--green);
+    text-transform: uppercase;
+  }
+
+  /* Green accent bar */
+  .accent-bar {
+    height: 4px;
+    background: var(--green);
+  }
+
+  /* Session info banner */
+  .session-banner {
+    background: var(--black);
+    padding: 24px 32px 28px;
+    color: var(--white);
+  }
+
+  .session-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--green);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .session-name {
+    font-size: 26px;
+    font-weight: 500;
+    line-height: 1.2;
+    margin-bottom: 6px;
+  }
+
+  .session-meta {
+    font-size: 14px;
+    color: #999;
+    font-weight: 400;
+  }
+
+  /* Main content */
+  .content {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 32px 24px 0;
+  }
+
+  .intro {
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin-bottom: 28px;
+    padding-bottom: 28px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* Question cards */
+  .question {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+
+  .q-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--indigo);
+    margin-bottom: 8px;
+  }
+
+  .q-text {
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 1.4;
+    margin-bottom: 18px;
+    color: var(--black);
+  }
+
+  .q-hint {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: -12px;
+    margin-bottom: 16px;
+  }
+
+  /* Star rating */
+  .star-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .star-option { display: none; }
+
+  .star-label {
+    cursor: pointer;
+    font-size: 28px;
+    color: #D0D0D0;
+    transition: color 0.1s, transform 0.1s;
+    line-height: 1;
+    user-select: none;
+  }
+
+  .star-label:hover,
+  .star-label:hover ~ .star-caption { color: var(--green); }
+
+  input[type="radio"]:checked ~ label .star-emoji,
+  .star-label.active { color: var(--black); }
+
+  .star-scale {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .star-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius);
+    border: 1.5px solid var(--border);
+    background: var(--white);
+    font-size: 16px;
+    font-weight: 500;
+    font-family: var(--font);
+    cursor: pointer;
+    transition: all 0.12s;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .star-btn:hover {
+    border-color: var(--black);
+    background: #F5F5F3;
+  }
+
+  .star-btn.selected {
+    background: var(--green);
+    border-color: var(--green);
+    color: var(--black);
+    font-weight: 500;
+  }
+
+  .scale-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: var(--mono);
+  }
+
+  /* Checkboxes */
+  .checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: border-color 0.1s, background 0.1s;
+    font-size: 14px;
+    user-select: none;
+  }
+
+  .checkbox-item:hover {
+    border-color: var(--black);
+    background: #FAFAFA;
+  }
+
+  .checkbox-item input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--black);
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+
+  .checkbox-item.checked {
+    border-color: var(--black);
+    background: #F0F0EE;
+  }
+
+  /* Text areas */
+  textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: var(--font);
+    font-size: 14px;
+    line-height: 1.6;
+    resize: vertical;
+    min-height: 100px;
+    color: var(--text);
+    background: var(--white);
+    transition: border-color 0.15s;
+    outline: none;
+  }
+
+  textarea:focus {
+    border-color: var(--black);
+  }
+
+  textarea::placeholder { color: #AAAAAA; }
+
+  /* Text inputs */
+  input[type="text"] {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: var(--font);
+    font-size: 14px;
+    color: var(--text);
+    background: var(--white);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  input[type="text"]:focus { border-color: var(--black); }
+  input[type="text"]::placeholder { color: #AAAAAA; }
+
+  .optional-tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-left: 8px;
+    font-weight: 400;
+  }
+
+  /* Two-col optional fields */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  @media (max-width: 500px) {
+    .two-col { grid-template-columns: 1fr; }
+    .star-scale { gap: 4px; }
+    .star-btn { width: 38px; height: 38px; }
+  }
+
+  .field-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: var(--text);
+  }
+
+  /* Submit area */
+  .submit-area {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .submit-note {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    flex: 1;
+    min-width: 180px;
+  }
+
+  .btn-submit {
+    background: var(--green);
+    color: var(--black);
+    border: none;
+    padding: 13px 28px;
+    border-radius: var(--radius);
+    font-family: var(--font);
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .btn-submit:hover { opacity: 0.85; }
+  .btn-submit:active { transform: scale(0.98); }
+  .btn-submit:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* States */
+  .state-screen {
+    display: none;
+    text-align: center;
+    padding: 60px 24px;
+  }
+
+  .state-screen.active { display: block; }
+
+  .state-icon {
+    font-size: 48px;
+    margin-bottom: 20px;
+  }
+
+  .state-title {
+    font-size: 22px;
+    font-weight: 500;
+    margin-bottom: 10px;
+  }
+
+  .state-body {
+    font-size: 15px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--black);
+    color: var(--white);
+    padding: 12px 20px;
+    border-radius: var(--radius);
+    font-size: 14px;
+    transition: transform 0.3s;
+    z-index: 99;
+    white-space: nowrap;
+  }
+
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  #form-area { display: block; }
+
+  /* Loading shimmer */
+  .shimmer {
+    background: linear-gradient(90deg, #F0F0EE 25%, #E8E8E6 50%, #F0F0EE 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.2s infinite;
+    border-radius: 4px;
+    height: 16px;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  .other-field {
+    margin-top: 8px;
+    display: none;
+  }
+
+  .other-field.visible { display: block; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">
+    <svg class="logo-symbol" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect x="2" y="4" width="5" height="20" fill="#81FBA5"/>
+      <rect x="9" y="4" width="5" height="6" fill="#81FBA5"/>
+      <rect x="16" y="4" width="5" height="4" fill="#81FBA5"/>
+      <rect x="9" y="22" width="5" height="2" fill="#81FBA5"/>
+      <rect x="16" y="20" width="5" height="4" fill="#81FBA5"/>
+      <rect x="9" y="13" width="12" height="4" fill="#81FBA5"/>
+    </svg>
+    <span class="logo-wordmark">DataRobot</span>
+  </div>
+  <span class="header-label">Session feedback</span>
+</div>
+
+<div class="accent-bar"></div>
+
+<div class="session-banner">
+  <div class="session-label">Session</div>
+  <div class="session-name" id="session-name">Loading…</div>
+  <div class="session-meta" id="session-meta"></div>
+</div>
+
+<div class="content">
+
+  <!-- Closed state -->
+  <div class="state-screen" id="state-closed">
+    <div class="state-icon">🔒</div>
+    <div class="state-title">This form is closed</div>
+    <div class="state-body">The feedback period for this session has ended. Thank you for participating.</div>
+  </div>
+
+  <!-- Invalid token state -->
+  <div class="state-screen" id="state-invalid">
+    <div class="state-icon">⚠️</div>
+    <div class="state-title">Invalid link</div>
+    <div class="state-body">This feedback link is not valid or has expired. Please use the link from your invitation email.</div>
+  </div>
+
+  <!-- Thank you state -->
+  <div class="state-screen" id="state-thanks">
+    <div class="state-icon">✓</div>
+    <div class="state-title">Response saved</div>
+    <div class="state-body">Thank you for your feedback. You can return to this link to update your response until the poll closes.</div>
+  </div>
+
+  <!-- Main form -->
+  <div id="form-area">
+
+    <p class="intro">Your responses help us improve future sessions. All fields except Q1 are optional. You can return to this link and update your response until the form closes.</p>
+
+    <!-- Q1: Value score -->
+    <div class="question">
+      <div class="q-label">Question 1</div>
+      <div class="q-text">Overall, how valuable was this session for you?</div>
+      <div class="star-scale" id="score-btns" role="group" aria-label="Value score 1 to 5">
+        <button type="button" class="star-btn" data-val="1" onclick="setScore(1)">1</button>
+        <button type="button" class="star-btn" data-val="2" onclick="setScore(2)">2</button>
+        <button type="button" class="star-btn" data-val="3" onclick="setScore(3)">3</button>
+        <button type="button" class="star-btn" data-val="4" onclick="setScore(4)">4</button>
+        <button type="button" class="star-btn" data-val="5" onclick="setScore(5)">5</button>
+      </div>
+      <div class="scale-labels">
+        <span>1 — least useful</span>
+        <span>5 — most valuable</span>
+      </div>
+    </div>
+
+    <!-- Q2: Topics -->
+    <div class="question">
+      <div class="q-label">Question 2</div>
+      <div class="q-text">What topics from the session were most relevant to you?</div>
+      <p class="q-hint">Select all that apply</p>
+      <div class="checkbox-grid" id="topics-grid">
+        <!-- topics injected by JS from CONFIG -->
+      </div>
+      <div class="other-field" id="other-field">
+        <input type="text" id="other-text" placeholder="Describe other topics…">
+      </div>
+    </div>
+
+    <!-- Q3: Improvements -->
+    <div class="question">
+      <div class="q-label">Question 3 <span class="optional-tag">Optional</span></div>
+      <div class="q-text">What could be improved in the session content or delivery?</div>
+      <textarea id="q3" placeholder="Share any suggestions…"></textarea>
+    </div>
+
+    <!-- Q4: Follow-up -->
+    <div class="question">
+      <div class="q-label">Question 4 <span class="optional-tag">Optional</span></div>
+      <div class="q-text">Please list any specific use cases or topics you would like covered in a follow-up session.</div>
+      <textarea id="q4" placeholder="e.g. time-series forecasting, model monitoring, feature engineering…"></textarea>
+    </div>
+
+    <!-- Optional fields -->
+    <div class="question">
+      <div class="q-label">About you <span class="optional-tag">Optional</span></div>
+      <div class="two-col">
+        <div>
+          <label class="field-label" for="name-email">Name or email address</label>
+          <input type="text" id="name-email" placeholder="Jane Smith or jane@company.com">
+        </div>
+        <div>
+          <label class="field-label" for="role">Your role</label>
+          <input type="text" id="role" placeholder="e.g. Data Scientist">
+        </div>
+      </div>
+    </div>
+
+    <!-- Submit -->
+    <div class="submit-area">
+      <p class="submit-note">Submitting saves your response. You can return to update it until the form closes.</p>
+      <button class="btn-submit" id="submit-btn" onclick="submitForm()">Submit feedback</button>
+    </div>
+
+  </div><!-- /form-area -->
+</div><!-- /content -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ════════════════════════════════════════════════
+   CONFIG — edit before deploying
+   ════════════════════════════════════════════════ */
+const CONFIG = {
+  appsScriptUrl: 'https://script.google.com/macros/s/AKfycbwlmZsquoiuVPv_5IGqp_qzvIYSt3HHVV0Tv6WOaMluHjFzznympYdm7NFxpwQTxy5a/exec',
+
+  /* Default session info (overridden by URL params if present) */
+  sessionName: 'DataRobot Agentic Offering',
+  sessionDateTime: 'May 7, 2026',
+
+  /* Q2 topic options — edit to match your session content */
+  topics: [
+    'Agentic use cases',
+    'Agent Application Templates',
+    'DataRobot MCP',
+    'DataRobot Models as Tools',
+    'Application Framework Components'
+    'Observability and Tracing',
+  ]
+};
+/* ════════════════════════════════════════════════ */
+
+const params = new URLSearchParams(window.location.search);
+const TOKEN = params.get('token') || '';
+const SESSION = params.get('session') || '';
+
+let selectedScore = null;
+
+function show(id) {
+  ['state-closed','state-invalid','state-thanks','form-area'].forEach(s => {
+    const el = document.getElementById(s);
+    if (el) el.style.display = (s === id) ? 'block' : 'none';
+  });
+}
+
+function setScore(val) {
+  selectedScore = val;
+  document.querySelectorAll('.star-btn').forEach(btn => {
+    btn.classList.toggle('selected', parseInt(btn.dataset.val) === val);
+  });
+}
+
+function toast(msg, duration=3000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+function getTopics() {
+  const checked = [];
+  document.querySelectorAll('#topics-grid input[type=checkbox]:checked').forEach(cb => {
+    checked.push(cb.value);
+  });
+  const otherChecked = document.getElementById('other-cb')?.checked;
+  if (otherChecked) {
+    const otherText = document.getElementById('other-text').value.trim();
+    if (otherText) checked.push('Other: ' + otherText);
+  }
+  return checked.join('; ');
+}
+
+function prefill(response) {
+  if (!response) return;
+  if (response.q1_score) setScore(parseInt(response.q1_score));
+  if (response.q2_topics) {
+    const topics = response.q2_topics.split('; ');
+    document.querySelectorAll('#topics-grid input[type=checkbox]').forEach(cb => {
+      if (topics.includes(cb.value)) {
+        cb.checked = true;
+        cb.closest('.checkbox-item').classList.add('checked');
+      }
+    });
+    const otherEntry = topics.find(t => t.startsWith('Other: '));
+    if (otherEntry) {
+      const otherCb = document.getElementById('other-cb');
+      if (otherCb) {
+        otherCb.checked = true;
+        otherCb.closest('.checkbox-item').classList.add('checked');
+        document.getElementById('other-field').classList.add('visible');
+        document.getElementById('other-text').value = otherEntry.replace('Other: ', '');
+      }
+    }
+  }
+  if (response.q3_improvements) document.getElementById('q3').value = response.q3_improvements;
+  if (response.q4_followup) document.getElementById('q4').value = response.q4_followup;
+  if (response.name) document.getElementById('name-email').value = response.name;
+  if (response.role) document.getElementById('role').value = response.role;
+}
+
+async function submitForm() {
+  if (!selectedScore) {
+    toast('Please select a value score (Q1) before submitting.');
+    return;
+  }
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  const payload = {
+    token: TOKEN,
+    session: SESSION || CONFIG.sessionName,
+    q1_score: selectedScore,
+    q2_topics: getTopics(),
+    q3_improvements: document.getElementById('q3').value.trim(),
+    q4_followup: document.getElementById('q4').value.trim(),
+    name: document.getElementById('name-email').value.trim(),
+    role: document.getElementById('role').value.trim(),
+    submitted_at: new Date().toISOString()
+  };
+
+  try {
+    const res = await fetch(CONFIG.appsScriptUrl, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.ok) {
+      show('state-thanks');
+    } else if (data.error === 'form closed') {
+      show('state-closed');
+    } else {
+      throw new Error(data.error || 'unknown error');
+    }
+  } catch (err) {
+    toast('Something went wrong. Please try again.');
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Submit feedback';
+  }
+}
+
+async function init() {
+  /* Set session info from URL params or config */
+  const sName = params.get('session_name') || CONFIG.sessionName;
+  const sDate = params.get('session_date') || CONFIG.sessionDateTime;
+  document.getElementById('session-name').textContent = sName;
+  document.getElementById('session-meta').textContent = sDate;
+
+  /* Build topic checkboxes */
+  const grid = document.getElementById('topics-grid');
+  CONFIG.topics.forEach(topic => {
+    const item = document.createElement('label');
+    item.className = 'checkbox-item';
+    item.innerHTML = `<input type="checkbox" value="${topic}"> ${topic}`;
+    item.querySelector('input').addEventListener('change', function() {
+      item.classList.toggle('checked', this.checked);
+    });
+    grid.appendChild(item);
+  });
+  /* Other option */
+  const other = document.createElement('label');
+  other.className = 'checkbox-item';
+  other.innerHTML = `<input type="checkbox" id="other-cb" value="Other"> Other`;
+  other.querySelector('input').addEventListener('change', function() {
+    other.classList.toggle('checked', this.checked);
+    document.getElementById('other-field').classList.toggle('visible', this.checked);
+  });
+  grid.appendChild(other);
+
+  if (!TOKEN) {
+    show('state-invalid');
+    return;
+  }
+
+  /* Load existing response */
+  try {
+    const url = `${CONFIG.appsScriptUrl}?token=${encodeURIComponent(TOKEN)}&session=${encodeURIComponent(SESSION)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (!data.open) {
+      show('state-closed');
+      return;
+    }
+    if (data.error === 'token not found') {
+      show('state-invalid');
+      return;
+    }
+    prefill(data.response);
+    show('form-area');
+  } catch(e) {
+    /* Network error or Apps Script not yet configured — show form anyway for testing */
+    console.warn('Could not reach Apps Script:', e.message);
+    show('form-area');
+  }
+}
+
+init();
+</script>
+</body>
+</html>
