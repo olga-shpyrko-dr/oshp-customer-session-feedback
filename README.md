@@ -26,6 +26,19 @@ https://olga-shpyrko-dr.github.io/session-feedback/?token=<UUID>
 | `index.html` | The feedback form — self-contained, no dependencies |
 | `README.md` | This file |
 
+## Reusing for a new session (copying the Sheet)
+
+When you copy the Google Sheet to reuse for a new session, the Apps Script code is copied but **the deployment is not** — you must create a fresh one each time:
+
+1. Open the new sheet → **Extensions → Apps Script**
+2. Update `SHEET_ID` to the new sheet's ID (from the URL between `/d/` and `/edit`)
+3. **Deploy → New deployment → Web app**
+   - Execute as: **Me** / Who has access: **Anyone**
+4. Copy the new deployment URL
+5. Update `CONFIG.appsScriptUrl` in `index.html` and re-upload to GitHub
+
+---
+
 ## Configuring for a new session
 
 Open `index.html` and edit the `CONFIG` block (~line 564):
