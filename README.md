@@ -65,6 +65,19 @@ Use the **Email Sender** spreadsheet in DataRobot Drive:
 2. Open **📧 Feedback → Send feedback emails**
 3. Tokens are generated automatically and personalised emails are sent
 
+### Before each new session — update the Email Sender
+
+The Email Sender spreadsheet and its `Sender.gs` script are **session-specific**. Before sending invites for a new session, update the following in `Sender.gs` (Extensions → Apps Script):
+
+```javascript
+const FEEDBACK_TAB_NAME = 'Your new session tab name';  // must match the Sheet tab exactly
+const SESSION_DISPLAY   = 'Your session title';          // shown in email subject + body
+const SESSION_DATE      = 'June 1, 2026';                // shown in email subject + body
+const CLOSE_DATE        = 'June 8, 2026';                // deadline shown in email body
+```
+
+Then save and **clear the participant rows** (or use a fresh sheet) so tokens from the previous session are not reused. The `sent` column protects against double-sending within a session but does not reset between sessions.
+
 ## Closing the form
 
 In `Code.gs` (Apps Script attached to the feedback Sheet):
