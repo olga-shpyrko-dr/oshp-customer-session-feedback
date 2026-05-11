@@ -1,4 +1,4 @@
-# Session feedback form — architecture spec
+# Session feedback form — architecture and implementation specification
 
 ## Overview
 
