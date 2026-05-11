@@ -88,7 +88,16 @@ In `Code.gs` (Apps Script attached to the feedback Sheet):
 ## Backend
 
 - **Apps Script:** handles token validation and response storage via JSONP (required to bypass Google Workspace CORS policy)
-- **Google Sheet:** `Session Feedback Responses` in DataRobot Drive — one tab per session
+- **Google Sheet:** `Session Feedback Responses` in DataRobot Drive — one tab per session; includes a `History` tab with full submission audit trail
 - **Email Sender:** `Session Feedback — Email Sender` in DataRobot Drive
 
 Full architecture and setup details: see `session-feedback-spec.md` in DataRobot Drive.
+
+---
+
+## ⚠️ Known issues
+
+### Submission notification emails — not working
+`Code.gs` is configured to send an email to `olga.shpyrko@datarobot.com` on each form submission. This feature is **not yet working as expected** — the notification email is not being delivered despite `MailApp` permissions being granted. Investigation is paused. The form itself, response storage, and History tab all work correctly.
+
+To debug when ready: add `debugLog()` calls to `Code.gs` (see spec) to write diagnostic output to a `DebugLog` tab in the feedback Sheet, then re-deploy and submit a test response.
