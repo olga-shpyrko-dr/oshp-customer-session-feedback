@@ -1,4 +1,4 @@
-# Session feedback form — architecture and implementation specification
+# Session feedback form — architecture spec
 
 ## Overview
 
@@ -86,15 +86,30 @@ Both endpoints wrap their response in a JSONP callback when `?callback=` is pres
 
 Token comparison uses `String()` cast on both sides to avoid number/text mismatch (Google Sheets auto-converts numeric-looking tokens to numbers).
 
-Sheet schema (one row per token):
+**Additional features in current version:**
+- **History tab** — every submission is appended to a `History` tab (auto-created if missing), preserving a full audit trail. The main session tab always shows the latest response per participant.
+- **Submission notifications** — each successful submit sends a plain-text email to `NOTIFY_EMAIL` via `MailApp` (not `GmailApp` — required for web app context).
+- **Auto-close by date** — `CLOSE_DATE` constant (ISO format `YYYY-MM-DD`). Once the date passes, `isFormOpen()` returns `false` automatically. The first request after close date triggers a reminder email to `NOTIFY_EMAIL` to formally set `FORM_OPEN = false`.
+
+> **Note on `MailApp` vs `GmailApp`:** `MailApp` must be used for sending from `doGet` web app handlers. `GmailApp` silently fails in this context. If notifications stop working after re-deploying, run the `testEmail()` function manually to re-authorize `MailApp` permissions.
+
+Main session tab schema (one row per token):
 
 | token | session | name | email | role | q1_score | q2_topics | q3_improvements | q4_followup | submitted_at | updated_at |
 |---|---|---|---|---|---|---|---|---|---|---|
+
+History tab schema (one row per submission):
+
+| submitted_at | token | session | name | email | role | q1_score | q2_topics | q3_improvements | q4_followup |
+|---|---|---|---|---|---|---|---|---|---|
 
 ### 3. Google Sheet — Feedback Responses (DataRobot Drive)
 - One tab per session, tab name must match `CONFIG.sessionName` exactly
 - Tokens written by the sender script (with `'` prefix to force text storage)
 - Organiser closes form by setting `FORM_OPEN = false` in `Code.gs` and re-deploying
+- **History tab** — auto-created by the script on first submission; contains one row per submission for full audit trail
+
+> ⚠️ **Never delete token rows from the session tab.** The script looks up the submitted token in this tab to validate and save the response. If the row is deleted, the participant's link returns "invalid" and their submission fails. To recover: re-add the token from the Email Sender sheet (column D) back into column A with a `'` prefix. To clear data between sessions, either use a new tab or clear only the data columns (B–K), leaving column A (token) intact.
 
 ### 4. Google Apps Script — Email Sender (`Sender.gs`)
 Attached to a separate **Email Sender spreadsheet** in DataRobot Drive. One-click operation via a custom **📧 Feedback** menu:
@@ -171,7 +186,19 @@ In `Code.gs`: change `FORM_OPEN = true` → `false`, save, re-deploy as new vers
 
 ## `Code.gs` — full script
 
+The current version of `Code.gs` is maintained as a separate file (`Code.gs`) downloadable from this conversation. It includes History tab, submission notifications, and auto-close features.
+
+Key constants at the top:
+
 ```javascript
+const SHEET_ID        = 'YOUR_SHEET_ID_HERE';
+const FORM_OPEN       = true;
+const CLOSE_DATE      = '2026-05-14';          // ISO YYYY-MM-DD — auto-closes after this date
+const NOTIFY_EMAIL    = 'olga.shpyrko@datarobot.com';
+const SESSION_DISPLAY = 'DataRobot GenAI and Agentic offering';
+const HISTORY_TAB     = 'History';
+
+// Legacy minimal version (no notifications, no history):
 const SHEET_ID  = 'YOUR_SHEET_ID_HERE';
 const FORM_OPEN = true;
 
@@ -268,6 +295,8 @@ Session name and date can also be overridden per-link via URL params:
 | CORS block on fetch | DataRobot Google Workspace policy blocks `fetch` to `script.google.com` from external origins | Replaced all `fetch` calls with JSONP (`<script>` tag injection) |
 | Token not found despite correct value | Google Sheets auto-converts numeric-looking tokens to numbers; strict `===` fails on string vs number | Token comparison uses `String()` cast on both sides |
 | Tokens must be stored as text | Same numeric conversion issue | Sender script and manual entry prefix tokens with `'` to force text storage |
+| Submission notifications not received | `GmailApp` silently fails when called from `doGet` web app handler | Replaced with `MailApp`; run `testEmail()` manually to trigger re-authorization if needed |
+| Deleting token rows breaks submissions | Script looks up token in session tab to validate; deleted rows return "token not found" | Never delete rows from session tab — clear data columns B–K only, leave column A (token) intact |
 
 ---
 
@@ -283,7 +312,9 @@ Session name and date can also be overridden per-link via URL params:
 
 **Apps Script limits** — 20,000 requests/day, 6 min execution/call. Gmail: 500 emails/day (free), 1,500/day (paid Workspace). Adequate for any session at realistic scale.
 
-**New session checklist** — for each new session: (1) add a new tab to the feedback Sheet, (2) update `CONFIG` in `index.html`, (3) update constants in `Sender.gs`, (4) re-upload `index.html` to GitHub.
+**New session checklist** — for each new session: (1) add a new tab to the feedback Sheet, (2) update `CONFIG` in `index.html`, (3) update `FEEDBACK_TAB_NAME`, `SESSION_DISPLAY`, `SESSION_DATE`, `CLOSE_DATE` in `Sender.gs`, (4) re-upload `index.html` to GitHub, (5) re-deploy `Code.gs` as a new version with updated `SESSION_DISPLAY` and `CLOSE_DATE`.
+
+**Feedback Sheet management** — the History tab accumulates all submissions across sessions. The main session tab holds one row per participant (latest response only). Never delete token rows from the session tab — if tokens are accidentally deleted, recover them from the Email Sender sheet column D.
 
 ---
 
@@ -296,7 +327,8 @@ Session name and date can also be overridden per-link via URL params:
 
 - [Google Apps Script Web Apps](https://developers.google.com/apps-script/guides/web)
 - [Apps Script Spreadsheet Service](https://developers.google.com/apps-script/reference/spreadsheet)
-- [GmailApp.sendEmail](https://developers.google.com/apps-script/reference/gmail/gmail-app#sendEmail(String,String,String))
+- [MailApp.sendEmail](https://developers.google.com/apps-script/reference/mail/mail-app) — used for notifications from web app context
+- [GmailApp reference](https://developers.google.com/apps-script/reference/gmail/gmail-app) — used in Sender.gs for outbound invite emails
 - [JSONP pattern](https://en.wikipedia.org/wiki/JSONP)
 - [UUID v4 generator](https://www.uuidgenerator.net/)
 - [QR code generator](https://qrcode.show)
